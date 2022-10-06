@@ -11,6 +11,10 @@
 
 qt_find_package(Cups PROVIDED_TARGETS Cups::Cups MODULE_NAME printsupport QMAKE_LIB cups)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CPDB_PKG cpdb-frontend)
+
+
 
 #### Tests
 
@@ -18,19 +22,26 @@ qt_find_package(Cups PROVIDED_TARGETS Cups::Cups MODULE_NAME printsupport QMAKE_
 
 #### Features
 
+qt_feature("cpdb" PUBLIC PRIVATE
+    SECTION "PAINTING"
+    LABEL "CPDB"
+    PURPOSE "Provides Common Print Dialog Backend support"
+    CONDITION CPDB_PKG_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring
+)
+qt_feature_definition("cpdb" "QT_NO_CPDB" NEGATE VALUE "1")
 qt_feature("cups" PUBLIC PRIVATE
     SECTION "Painting"
     LABEL "CUPS"
     PURPOSE "Provides support for the Common Unix Printing System."
-    CONDITION Cups_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring
+    CONDITION Cups_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring AND NOT CPDB_PKG_FOUND
 )
 qt_feature_definition("cups" "QT_NO_CUPS" NEGATE VALUE "1")
-qt_feature("cupsjobwidget" PUBLIC PRIVATE
+qt_feature("unixjobwidget" PUBLIC PRIVATE
     SECTION "Widgets"
-    LABEL "CUPS job control widget"
-    CONDITION ( QT_FEATURE_buttongroup ) AND ( QT_FEATURE_calendarwidget ) AND ( QT_FEATURE_checkbox ) AND ( QT_FEATURE_combobox ) AND ( QT_FEATURE_cups ) AND ( QT_FEATURE_datetimeedit ) AND ( QT_FEATURE_groupbox ) AND ( QT_FEATURE_tablewidget )
+    LABEL "UNIX job control widget"
+    CONDITION ( QT_FEATURE_buttongroup ) AND ( QT_FEATURE_calendarwidget ) AND ( QT_FEATURE_checkbox ) AND ( QT_FEATURE_combobox ) AND ( QT_FEATURE_cups OR QT_FEATURE_cpdb ) AND ( QT_FEATURE_datetimeedit ) AND ( QT_FEATURE_groupbox ) AND ( QT_FEATURE_tablewidget )
 )
-qt_feature_definition("cupsjobwidget" "QT_NO_CUPSJOBWIDGET" NEGATE VALUE "1")
+qt_feature_definition("unixjobwidget" "QT_NO_UNIXJOBWIDGET" NEGATE VALUE "1")
 qt_feature("printer" PUBLIC
     SECTION "Painting"
     LABEL "QPrinter"
@@ -60,5 +71,6 @@ qt_feature("printpreviewdialog" PUBLIC
 )
 qt_feature_definition("printpreviewdialog" "QT_NO_PRINTPREVIEWDIALOG" NEGATE VALUE "1")
 qt_configure_add_summary_section(NAME "Qt PrintSupport")
+qt_configure_add_summary_entry(ARGS "cpdb")
 qt_configure_add_summary_entry(ARGS "cups")
 qt_configure_end_summary_section() # end of "Qt PrintSupport" section

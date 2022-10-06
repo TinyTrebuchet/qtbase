@@ -367,7 +367,7 @@ void QPrintDialog::done(int result)
     auto *d = static_cast<QAbstractPrintDialogPrivate *>(d_ptr.data());
     QDialog::done(result);
     if (result == Accepted)
-        emit accepted(printer());
+        Q_EMIT accepted(printer());
     if (d->receiverToDisconnectOnClose) {
         disconnect(this, SIGNAL(accepted(QPrinter*)),
                    d->receiverToDisconnectOnClose, d->memberToDisconnectOnClose);

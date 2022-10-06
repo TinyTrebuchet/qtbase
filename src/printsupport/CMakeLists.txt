@@ -1,6 +1,9 @@
 # Copyright (C) 2022 The Qt Company Ltd.
 # SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only WITH Qt-GPL-exception-1.0
 
+# cpdb imports glib
+ADD_DEFINITIONS(-DQT_NO_KEYWORDS)
+
 # Generated from printsupport.pro.
 
 #####################################################################
@@ -82,14 +85,23 @@ qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_printpreviewwidget
         widgets/qprintpreviewwidget.cpp widgets/qprintpreviewwidget.h
 )
 
+qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cpdb AND UNIX AND NOT APPLE
+    SOURCES
+        kernel/qcpdb.cpp kernel/qcpdb_p.h
+    INCLUDE_DIRECTORIES
+        ${CPDB_PKG_INCLUDE_DIRS}
+    LIBRARIES
+        ${CPDB_PKG_LIBRARIES}
+)
+
 qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cups AND UNIX AND NOT APPLE
     SOURCES
         kernel/qcups.cpp kernel/qcups_p.h
 )
 
-qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cupsjobwidget AND UNIX AND NOT APPLE
+qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_unixjobwidget AND UNIX AND NOT APPLE
     SOURCES
-        widgets/qcupsjobwidget.cpp widgets/qcupsjobwidget.ui widgets/qcupsjobwidget_p.h
+        widgets/qunixjobwidget.cpp widgets/qunixjobwidget.ui widgets/qunixjobwidget_p.h
     ENABLE_AUTOGEN_TOOLS
         uic
 )
@@ -184,7 +196,7 @@ qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_printdialog AND UNIX
         dialogs/qprintsettingsoutput.ui
         dialogs/qprintwidget.ui
     INCLUDE_DIRECTORIES
-        ${QtBase_SOURCE_DIR}/src/plugins/printsupport/cups
+        ${QtBase_SOURCE_DIR}/src/plugins/printsupport/cpdb
     ENABLE_AUTOGEN_TOOLS
         uic
 )

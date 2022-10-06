@@ -1,6 +1,6 @@
 <ui version="4.0" >
- <class>QCupsJobWidget</class>
- <widget class="QWidget" name="QCupsJobWidget" >
+ <class>QUnixJobWidget</class>
+ <widget class="QWidget" name="QUnixJobWidget" >
   <property name="geometry" >
    <rect>
     <x>0</x>
