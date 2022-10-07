@@ -123,8 +123,8 @@ void QUnixJobWidget::initJobHold()
     if (opt && opt->num_supported > 0) {
         for (int i = 0; i < opt->num_supported; i++) {
             QByteArray val = opt->supported_values[i];
-            QByteArray displayName = cpdbGetHumanReadableChoiceName(m_printerObj, "job-hold-until", opt->supported_values[i]);
-            m_ui.jobHoldComboBox->addItem(tr(displayName), QVariant::fromValue(val));
+            QByteArray displayVal = cpdbGetHumanReadableChoiceName(m_printerObj, "job-hold-until", opt->supported_values[i]);
+            m_ui.jobHoldComboBox->addItem(tr(displayVal), QVariant::fromValue(val));
         }
 
         QByteArray val = "specific";
@@ -216,9 +216,9 @@ void QUnixJobWidget::initBannerPages()
     if (opt && opt->num_supported > 0) {
         for (int i = 0; i < opt->num_supported; i++) {
             QByteArray val = opt->supported_values[i];
-            QByteArray displayName = cpdbGetHumanReadableChoiceName(m_printerObj, "job-sheets", opt->supported_values[i]);
-            m_ui.startBannerPageCombo->addItem(tr(displayName), QVariant::fromValue(val));
-            m_ui.endBannerPageCombo->addItem(tr(displayName), QVariant::fromValue(val));
+            QByteArray displayVal = cpdbGetHumanReadableChoiceName(m_printerObj, "job-sheets", opt->supported_values[i]);
+            m_ui.startBannerPageCombo->addItem(tr(displayVal), QVariant::fromValue(val));
+            m_ui.endBannerPageCombo->addItem(tr(displayVal), QVariant::fromValue(val));
         }
 
         QByteArray defaultVal = opt->default_value;

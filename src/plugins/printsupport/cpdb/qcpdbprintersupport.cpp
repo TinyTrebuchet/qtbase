@@ -12,15 +12,15 @@ QT_BEGIN_NAMESPACE
 
 extern "C" {
 
-static int addPrinterCallback(cpdb_printer_obj_t *p)
+static int addPrinterCallback(cpdb_printer_obj_t *printerObj)
 {
-    qDebug() << "Found printer: " << p->name;
+    qDebug() << "Found printer: " << printerObj->name;
     return 0;
 }
 
-static int removePrinterCallback(cpdb_printer_obj_t *p)
+static int removePrinterCallback(cpdb_printer_obj_t *printerObj)
 {
-    qDebug() << "Lost printer: " << p->name;
+    qDebug() << "Lost printer: " << printerObj->name;
     return 0;
 }
 
@@ -65,17 +65,17 @@ QPrintDevice QCpdbPrinterSupport::createPrintDevice(const QString &id)
     GHashTableIter iter;
     gpointer key, value;
 
-    cpdb_printer_obj_t *p = nullptr;
+    cpdb_printer_obj_t *printerObj = nullptr;
     g_hash_table_iter_init(&iter, f->printer);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
-        cpdb_printer_obj_t *pIter = static_cast<cpdb_printer_obj_t *>(value);
-        if (id == pIter->name) {
-            p = pIter;
+        cpdb_printer_obj_t *printerObjIter = static_cast<cpdb_printer_obj_t *>(value);
+        if (id == printerObjIter->name) {
+            printerObj = printerObjIter;
             break;
         }
     }
 
-    return QPlatformPrinterSupport::createPrintDevice(new QCpdbPrintDevice(p));
+    return QPlatformPrinterSupport::createPrintDevice(new QCpdbPrintDevice(printerObj));
 }
 
 QStringList QCpdbPrinterSupport::availablePrintDeviceIds() const

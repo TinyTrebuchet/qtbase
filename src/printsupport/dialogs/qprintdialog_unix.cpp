@@ -129,6 +129,15 @@ private:
     QUnixJobWidget *m_jobOptions;
 #endif
 
+#if QT_CONFIG(cpdb)
+    bool optionBlackListed(const QByteArray &optionName) const;
+    bool createAdvancedOptionsWidget();
+    void setPrinterAdvancedCpdbOptions() const;
+
+    QSet<QByteArray> m_blackListedOptions;
+    QList<QComboBox *> m_advancedOptionsCombos;
+#endif
+
 #if QT_CONFIG(cups)
     bool createAdvancedOptionsWidget();
     void setPrinterAdvancedCupsOptions() const;
@@ -297,6 +306,7 @@ QPrintPropertiesDialog::QPrintPropertiesDialog(QPrinter *printer, QPrintDevice *
 #endif
 
     const int advancedTabIndex = widget.tabs->indexOf(widget.cupsPropertiesPage);
+
 #if QT_CONFIG(cups)
     m_currentPrintDevice = currentPrintDevice;
     const bool anyWidgetCreated = createAdvancedOptionsWidget();
@@ -308,7 +318,31 @@ QPrintPropertiesDialog::QPrintPropertiesDialog(QPrinter *printer, QPrintDevice *
     });
 
 #elif QT_CONFIG(cpdb)
-    widget.tabs->setTabEnabled(advancedTabIndex, false);
+    // blacklist options for advanced tab, which have been added at other places
+    m_blackListedOptions 
+    << "page-ranges"
+    << "page-set"
+    << "page-delivery"
+    << "multiple-document-handling"
+    << "sides"
+    << "print-color-mode"
+    << "media"
+    << "orientation-requested"
+    << "media-left-margin"
+    << "media-right-margin"
+    << "media-top-margin"
+    << "media-bottom-margin"
+    << "number-up"
+    << "number-up-layout"
+    << "job-hold-until"
+    << "job-priority"
+    << "billing-info"
+    << "job-sheets"
+    << "ipp-attribute-fidelity"
+    << "borderless";
+
+    const bool anyWidgetCreated = createAdvancedOptionsWidget();
+    widget.tabs->setTabEnabled(advancedTabIndex, anyWidgetCreated);
     widget.conflictsLabel->setVisible(false);
 #else
     Q_UNUSED(currentPrintDevice);
@@ -325,6 +359,10 @@ void QPrintPropertiesDialog::setupPrinter() const
     QCUPSSupport::clearCupsOptions(m_printer);
 #endif
 
+#if QT_CONFIG(cpdb)
+    // setup advanced options first, so as to process borderless option
+    setPrinterAdvancedCpdbOptions();
+#endif
     widget.pageSetup->setupPrinter();
 #if QT_CONFIG(unixjobwidget)
     if (m_jobOptions)
@@ -392,6 +430,116 @@ void QPrintPropertiesDialog::showEvent(QShowEvent *event)
 #endif
     QDialog::showEvent(event);
 }
+
+#if QT_CONFIG(cpdb)
+
+static const char *cpdbOptionNameProperty = "_q_cpdb_option_name";
+
+bool QPrintPropertiesDialog::optionBlackListed(const QByteArray &optionName) const
+{
+    return m_blackListedOptions.contains(optionName);
+}
+
+bool QPrintPropertiesDialog::createAdvancedOptionsWidget()
+{
+    bool anyWidgetCreated = false;
+    
+    cpdb_options_t *opts = cpdbGetAllOptions(m_printerObj);
+
+    if (opts) {
+        QWidget *holdingWidget = new QWidget();
+        QFormLayout *layout = new QFormLayout(holdingWidget);
+        // QFormLayout *formLayout = new QFormLayout();
+
+        GHashTableIter iter;
+        gpointer key, value;
+        g_hash_table_iter_init(&iter, opts->table);
+        while (g_hash_table_iter_next(&iter, &key, &value)) {
+            QByteArray optionName = static_cast<char *>(key);
+            cpdb_option_t *opt = static_cast<cpdb_option_t *>(value);
+
+            if (!optionBlackListed(optionName) && opt && opt->num_supported > 1) {
+                anyWidgetCreated = true;
+
+                QString displayName = tr(cpdbGetHumanReadableOptionName(m_printerObj, opt->option_name));
+                QLabel *optionLabel = new QLabel(displayName);
+
+                QComboBox *choicesCb = new QComboBox();
+                for (int i = 0; i < opt->num_supported; i++) {
+                    QByteArray val = opt->supported_values[i];
+                    QByteArray displayVal = cpdbGetHumanReadableChoiceName(m_printerObj, opt->option_name, opt->supported_values[i]);
+                    choicesCb->addItem(tr(displayVal), QVariant::fromValue(val));
+                }
+
+                QByteArray defaultVal = opt->default_value;
+                int idx = choicesCb->findData(QVariant::fromValue(defaultVal));
+                if (idx >= 0)
+                    choicesCb->setCurrentIndex(idx);
+
+                choicesCb->setProperty(cpdbOptionNameProperty, QVariant::fromValue(optionName));
+
+                m_advancedOptionsCombos << choicesCb;
+                layout->addRow(optionLabel, choicesCb); 
+            }
+        }
+
+        bool supportsBorderless = true;
+        QList<QByteArray> optNames = {"media-left-margin", "media-right-margin", "media-top-margin", "media-bottom-margin"};
+        for (QByteArray &optName : optNames) {
+            bool found = false;
+            cpdb_option_t *opt = cpdbGetOption(m_printerObj, optName.constData());
+            for (int i = 0; i < opt->num_supported; i++) {
+                if (qstrcmp(opt->supported_values[i], "0") == 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found || opt->num_supported <= 1) {
+                supportsBorderless = false;
+                break;
+            }
+        }
+
+        if (supportsBorderless) {
+            anyWidgetCreated = true;
+
+            QByteArray optionName = "borderless";
+            QString displayName = tr("Borderless");
+            QLabel *optionLabel = new QLabel(displayName);
+
+            QComboBox *choicesCb = new QComboBox();
+            choicesCb->addItem(tr("On"), QVariant::fromValue(QByteArray("true")));
+            choicesCb->addItem(tr("Off"), QVariant::fromValue(QByteArray("false")));
+            choicesCb->setCurrentIndex(1);
+
+            choicesCb->setProperty(cpdbOptionNameProperty, QVariant::fromValue(optionName));
+
+            m_advancedOptionsCombos << choicesCb;
+            layout->addRow(optionLabel, choicesCb);
+        }
+
+
+        if (anyWidgetCreated) {
+            widget.scrollArea->setWidget(holdingWidget);
+        } else {
+            delete holdingWidget;
+            delete layout;
+        }
+    }
+
+    return anyWidgetCreated;
+}
+
+void QPrintPropertiesDialog::setPrinterAdvancedCpdbOptions() const
+{
+    for (const QComboBox *choicesCb : m_advancedOptionsCombos) {
+        QByteArray optionName = qvariant_cast<QByteArray>(choicesCb->property(cpdbOptionNameProperty));
+        QByteArray val = qvariant_cast<QByteArray>(choicesCb->currentData());
+        cpdbAddSettingToPrinter(m_printerObj, optionName.constData(), val.constData());
+    }
+}
+
+#endif
 
 #if QT_CONFIG(cups)
 
@@ -646,8 +794,8 @@ void QPrintDialogPrivate::init()
         displayPageSet = true;
         for (int i = 0; i < opt->num_supported; i++) {
             QByteArray val = opt->supported_values[i];
-            QByteArray displayName = cpdbGetHumanReadableChoiceName(top->d->m_printerObj, opt->option_name, opt->supported_values[i]);
-            options.pageSetCombo->addItem(tr(displayName), QVariant::fromValue(val));
+            QByteArray displayVal = cpdbGetHumanReadableChoiceName(top->d->m_printerObj, opt->option_name, opt->supported_values[i]);
+            options.pageSetCombo->addItem(tr(displayVal), QVariant::fromValue(val));
         }
 
         QByteArray defaultVal = opt->default_value;
@@ -717,56 +865,67 @@ void QPrintDialogPrivate::init()
 // initialize printer options
 void QPrintDialogPrivate::selectPrinter(const QPrinter::OutputFormat outputFormat)
 {
-        Q_Q(QPrintDialog);
-        QPrinter *p = q->printer();
-        printerOutputFormat = outputFormat;
+    Q_Q(QPrintDialog);
+    QPrinter *p = q->printer();
+    printerOutputFormat = outputFormat;
 
-        // printer supports duplex mode?
-        const auto supportedDuplexMode = top->d->m_currentPrintDevice.supportedDuplexModes();
-        options.duplexLong->setEnabled(supportedDuplexMode.contains(QPrint::DuplexLongSide));
-        options.duplexShort->setEnabled(supportedDuplexMode.contains(QPrint::DuplexShortSide));
+    // printer supports duplex mode?
+    const auto supportedDuplexMode = top->d->m_currentPrintDevice.supportedDuplexModes();
+    options.duplexLong->setEnabled(supportedDuplexMode.contains(QPrint::DuplexLongSide));
+    options.duplexShort->setEnabled(supportedDuplexMode.contains(QPrint::DuplexShortSide));
 
-        if (p->colorMode() == QPrinter::Color)
-            options.color->setChecked(true);
-        else
-            options.grayscale->setChecked(true);
+    if (p->colorMode() == QPrinter::Color)
+        options.color->setChecked(true);
+    else
+        options.grayscale->setChecked(true);
 
-        // duplex priorities to be as follows:
-        // 1) a user-selected duplex value in the dialog has highest priority
-        // 2) duplex value set in the QPrinter
-        QPrint::DuplexMode duplex;
-        if (explicitDuplexMode != QPrint::DuplexAuto && supportedDuplexMode.contains(explicitDuplexMode))
-            duplex = explicitDuplexMode;
-        else
-            duplex = static_cast<QPrint::DuplexMode>(p->duplex());
-        switch (duplex) {
-        case QPrint::DuplexNone:
-            options.noDuplex->setChecked(true); break;
-        case QPrint::DuplexLongSide:
-        case QPrint::DuplexAuto:
-            options.duplexLong->setChecked(true); break;
-        case QPrint::DuplexShortSide:
-            options.duplexShort->setChecked(true); break;
-        }
-        options.copies->setValue(p->copyCount());
-        options.collate->setChecked(p->collateCopies());
-        options.reverse->setChecked(p->pageOrder() == QPrinter::LastPageFirst);
+    // duplex priorities to be as follows:
+    // 1) a user-selected duplex value in the dialog has highest priority
+    // 2) duplex value set in the QPrinter
+    QPrint::DuplexMode duplex;
+    if (explicitDuplexMode != QPrint::DuplexAuto && supportedDuplexMode.contains(explicitDuplexMode))
+        duplex = explicitDuplexMode;
+    else
+        duplex = static_cast<QPrint::DuplexMode>(p->duplex());
+    switch (duplex) {
+    case QPrint::DuplexNone:
+        options.noDuplex->setChecked(true); break;
+    case QPrint::DuplexLongSide:
+    case QPrint::DuplexAuto:
+        options.duplexLong->setChecked(true); break;
+    case QPrint::DuplexShortSide:
+        options.duplexShort->setChecked(true); break;
+    }
+    options.copies->setValue(p->copyCount());
+    options.collate->setChecked(p->collateCopies());
+    options.reverse->setChecked(p->pageOrder() == QPrinter::LastPageFirst);
 
-        if (outputFormat == QPrinter::PdfFormat || options.printSelection->isChecked()
-            || options.printCurrentPage->isChecked())
+    if (outputFormat == QPrinter::PdfFormat || options.printSelection->isChecked()
+        || options.printCurrentPage->isChecked())
 
-            options.pageSetCombo->setEnabled(false);
-        else
-            options.pageSetCombo->setEnabled(true);
+        options.pageSetCombo->setEnabled(false);
+    else
+        options.pageSetCombo->setEnabled(true);
+
+#if QT_CONFIG(cpdb)
+    cpdb_option_t *opt = cpdbGetOption(top->d->m_printerObj, "page-ranges");
+    if (opt) {
+        options.pagesRadioButton->setEnabled(true);
+        options.pagesLineEdit->setEnabled(true);
+    } else {
+        options.pagesRadioButton->setEnabled(false);
+        options.pagesLineEdit->setEnabled(false);
+    }
+#endif
 
 #if QT_CONFIG(cups)
-        // Disable complex page ranges widget when printing to pdf
-        // It doesn't work since it relies on cups to do the heavy lifting and cups
-        // is not used when printing to PDF
-        options.pagesRadioButton->setEnabled(outputFormat != QPrinter::PdfFormat);
+    // Disable complex page ranges widget when printing to pdf
+    // It doesn't work since it relies on cups to do the heavy lifting and cups
+    // is not used when printing to PDF
+    options.pagesRadioButton->setEnabled(outputFormat != QPrinter::PdfFormat);
 
-        // Disable color options on main dialog if not printing to file, it will be handled by CUPS advanced dialog
-        options.colorMode->setVisible(outputFormat == QPrinter::PdfFormat);
+    // Disable color options on main dialog if not printing to file, it will be handled by CUPS advanced dialog
+    options.colorMode->setVisible(outputFormat == QPrinter::PdfFormat);
 #endif
 }
 
@@ -881,17 +1040,20 @@ void QPrintDialogPrivate::setupPrinter()
 #endif
 
 #if QT_CONFIG(cpdb)
-    if (options.pagesRadioButton->isChecked()) {
-        QString pageRange = options.pagesLineEdit->text();
-        const QPageRanges ranges = QPageRanges::fromString(pageRange);
-        if (!ranges.isEmpty()) {
-            p->setPrintRange(QPrinter::PageRange);
-            p->setPageRanges(ranges);
+    if (options.pagesRadioButton->isEnabled()) {
+        QString pageRange;
+        if (options.pagesRadioButton->isChecked()) {
+            pageRange = options.pagesLineEdit->text();
+            const QPageRanges ranges = QPageRanges::fromString(pageRange);
+            if (!ranges.isEmpty()) {
+                p->setPrintRange(QPrinter::PageRange);
+                p->setPageRanges(ranges);
+            }
+            cpdbAddSettingToPrinter(top->d->m_printerObj, "page-ranges", pageRange.toLatin1().constData());
+        } else if (options.printRange->isChecked() && !q->testOption(QPrintDialog::PrintPageRange)) {
+            pageRange = tr("%1-%2").arg(options.from->value()).arg(qMax(options.from->value(),options.to->value()));
+            cpdbAddSettingToPrinter(top->d->m_printerObj, "page-ranges", pageRange.toLatin1().constData());
         }
-        cpdbAddSettingToPrinter(top->d->m_printerObj, "page-ranges", pageRange.toLatin1().constData());
-    } else if (options.printRange->isChecked() && !q->testOption(QPrintDialog::PrintPageRange)) {
-        QString pageRange = tr("%1-%2").arg(options.from->value()).arg(qMax(options.from->value(),options.to->value()));
-        cpdbAddSettingToPrinter(top->d->m_printerObj, "page-ranges", pageRange.toLatin1().constData());
     }
 
     QByteArray pageSet = qvariant_cast<QByteArray>(options.pageSetCombo->itemData(options.pageSetCombo->currentIndex()));
@@ -1089,7 +1251,10 @@ int QPrintDialog::exec()
 void QPrintDialog::accept()
 {
     Q_D(QPrintDialog);
-#if QT_CONFIG(cups)
+
+    d->setupPrinter();
+
+#if QT_CONFIG(cups) || QT_CONFIG(cpdb)
     if (d->options.pagesRadioButton->isChecked() && printer()->pageRanges().isEmpty()) {
         QMessageBox::critical(this, tr("Invalid Pages Definition"),
                               tr("%1 does not follow the correct syntax. Please use ',' to separate "
@@ -1098,6 +1263,9 @@ void QPrintDialog::accept()
                               QMessageBox::Ok, QMessageBox::Ok);
         return;
     }
+#endif
+
+#if QT_CONFIG(cups)
     if (d->top->d->m_duplexPpdOption && d->top->d->m_duplexPpdOption->conflicted) {
         const QMessageBox::StandardButton answer = QMessageBox::warning(this, tr("Duplex Settings Conflicts"),
                                                                         tr("There are conflicts in duplex settings. Do you want to fix them?"),
@@ -1106,7 +1274,7 @@ void QPrintDialog::accept()
             return;
     }
 #endif
-    d->setupPrinter();
+
     QDialog::accept();
 }
 
@@ -1175,7 +1343,13 @@ QUnixPrintWidgetPrivate::QUnixPrintWidgetPrivate(QUnixPrintWidget *p, QPrinter *
 
 void QUnixPrintWidgetPrivate::updateWidget()
 {
+#if QT_CONFIG(cpdb)
+    // printToFile will be handled by FILE backend
+    const bool printToFile = false;
+#else
     const bool printToFile = q == nullptr || q->testOption(QPrintDialog::PrintToFile);
+#endif
+
     if (printToFile && !filePrintersAdded) {
         if (widget.printers->count())
             widget.printers->insertSeparator(widget.printers->count());
@@ -1256,8 +1430,12 @@ void QUnixPrintWidgetPrivate::_q_printerChanged(int index)
         printer->setOutputFormat(QPrinter::NativeFormat);
 
         QPlatformPrinterSupport *ps = QPlatformPrinterSupportPlugin::get();
-        if (ps)
+        if (ps) {
             m_currentPrintDevice = ps->createPrintDevice(widget.printers->itemText(index));
+#if QT_CONFIG(cpdb)
+            m_printerObj = qvariant_cast<cpdb_printer_obj_t *>(m_currentPrintDevice.property(PDPK_CpdbPrinterObj));
+#endif
+        }
         else
             m_currentPrintDevice = QPrintDevice();
 
@@ -1267,10 +1445,6 @@ void QUnixPrintWidgetPrivate::_q_printerChanged(int index)
         widget.type->setText(m_currentPrintDevice.makeAndModel());
         if (optionsPane)
             optionsPane->selectPrinter(QPrinter::NativeFormat);
-
-#if QT_CONFIG(cpdb)
-        m_printerObj = qvariant_cast<cpdb_printer_obj_t *>(m_currentPrintDevice.property(PDPK_CpdbPrinterObj));
-#endif
     }
 
 #if QT_CONFIG(cups)

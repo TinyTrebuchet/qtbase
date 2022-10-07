@@ -146,8 +146,13 @@ QMarginsF QCpdbPrintDevice::printableMargins(const QPageSize &pageSize,
     char *media = pageSize.key().toLocal8Bit().data();
     int num_margins = cpdbGetMediaMargins(m_printerObj, media, &margins);
 
-    if (num_margins) {
-        return QMarginsF(margins[0].left, margins[0].top, margins[0].right, margins[0].bottom);
+    if (num_margins > 0) {
+        int left = margins[0].left / 100.0 * QCPDBSupport::pointsMultiplier;
+        int right = margins[0].right / 100.0 * QCPDBSupport::pointsMultiplier;
+        int top = margins[0].top / 100.0 * QCPDBSupport::pointsMultiplier;
+        int bottom = margins[0].bottom / 100.0 * QCPDBSupport::pointsMultiplier;
+
+        return QMarginsF(left, top, right, bottom);
     }
 
     return QMarginsF();

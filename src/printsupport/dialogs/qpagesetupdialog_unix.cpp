@@ -278,8 +278,8 @@ void QPageSetupWidget::initPagesPerSheet()
     if (opt && opt->num_supported > 0) {
         for (int i = 0; i < opt->num_supported; i++) {
             QByteArray val = opt->supported_values[i];
-            QByteArray displayName = cpdbGetHumanReadableChoiceName(m_printerObj, "number-up", opt->supported_values[i]);
-            m_ui.pagesPerSheetCombo->addItem(QPrintDialog::tr(displayName), QVariant::fromValue(val));
+            QByteArray displayVal = cpdbGetHumanReadableChoiceName(m_printerObj, "number-up", opt->supported_values[i]);
+            m_ui.pagesPerSheetCombo->addItem(QPrintDialog::tr(displayVal), QVariant::fromValue(val));
         }
 
         QByteArray defaultVal = opt->default_value;
@@ -294,8 +294,8 @@ void QPageSetupWidget::initPagesPerSheet()
     if (opt && opt->num_supported > 0) {
         for (int i = 0; i < opt->num_supported; i++) {
             QByteArray val = opt->supported_values[i];
-            QByteArray displayName = cpdbGetHumanReadableChoiceName(m_printerObj, "number-up-layout", opt->supported_values[i]);
-            m_ui.pagesPerSheetLayoutCombo->addItem(QPrintDialog::tr(displayName), QVariant::fromValue(val));
+            QByteArray displayVal = cpdbGetHumanReadableChoiceName(m_printerObj, "number-up-layout", opt->supported_values[i]);
+            m_ui.pagesPerSheetLayoutCombo->addItem(QPrintDialog::tr(displayVal), QVariant::fromValue(val));
         }
 
         QByteArray defaultVal = opt->default_value;
@@ -554,6 +554,12 @@ void QPageSetupWidget::setupPrinter() const
     int right = margins.right() * 100.0 / QCPDBSupport::pointsMultiplier;
     int top = margins.top() * 100.0 / QCPDBSupport::pointsMultiplier;
     int bottom = margins.bottom() * 100.0 / QCPDBSupport::pointsMultiplier;
+
+    char *borderless = cpdbGetSetting(m_printerObj, "borderless");
+    if (borderless && qstrcmp(borderless, "true") == 0) {
+        left = right = top = bottom = 0;
+        cpdbClearSetting(m_printerObj->settings, "borderless");
+    }
 
     QString val = tr("{media-size={x-dimension=%1 y-dimension=%2} media-bottom-margin=%3 media-left-margin=%4 media-right-margin=%5 media-top-margin=%6}")
     .arg(width).arg(height).arg(bottom).arg(left).arg(right).arg(top);

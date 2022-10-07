@@ -91,7 +91,7 @@ bool QCpdbPrintEnginePrivate::openPrintDevice()
 
     if (!outputFileName.isEmpty()) {
         QFile *file = new QFile(outputFileName);
-        if (! file->open(QFile::WriteOnly|QFile::Truncate)) {
+        if (!file->open(QFile::WriteOnly|QFile::Truncate)) {
             delete file;
             return false;
         }
@@ -165,7 +165,7 @@ void QCpdbPrintEnginePrivate::closePrintDevice()
             cpdbAddSettingToPrinter(m_printerObj, "orientation-requested", "4");
 
         // Print the file
-        cpdbPrintFile(m_printerObj, tempFile.toLocal8Bit());
+        cpdbPrintFile(m_printerObj, tempFile.toLocal8Bit().constData());
 
         QFile::remove(tempFile);
     }

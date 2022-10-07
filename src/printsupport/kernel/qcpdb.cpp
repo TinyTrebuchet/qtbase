@@ -7,15 +7,7 @@ using namespace Qt::StringLiterals;
 QT_IMPL_METATYPE_EXTERN_TAGGED(QCPDBSupport::PageSet, QCPDBSupport__PageSet)
 
 QCPDBSupport::PageSet QCPDBSupport::getPageSet(QByteArray val)
-{
-    //if (strcmp(val, "all") == 0)
-        //return QCPDBSupport::AllPages;
-    //else if (strcmp(val, "even") == 0)
-        //return QCPDBSupport::EvenPages;
-    //else if (strcmp(val, "odd") == 0)
-        //return QCPDBSupport::OddPages;
-    //return QCPDBSupport::Invalid;
-    
+{    
     if (val == "all") 
         return QCPDBSupport::AllPages;
     else if (val == "even") 

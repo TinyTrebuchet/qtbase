@@ -23,7 +23,7 @@ QT_BEGIN_NAMESPACE
 class QCpdbPrintDevice : public QPlatformPrintDevice
 {
 public:
-    explicit QCpdbPrintDevice(cpdb_printer_obj_t * const pObj);
+    explicit QCpdbPrintDevice(cpdb_printer_obj_t * const printerObj);
     virtual ~QCpdbPrintDevice();
 
     QString id() const override;
