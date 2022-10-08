@@ -26,14 +26,8 @@ public:
     explicit QCpdbPrintDevice(cpdb_printer_obj_t * const printerObj);
     virtual ~QCpdbPrintDevice();
 
-    QString id() const override;
-    QString name() const override;
-    QString location() const override;
-    QString makeAndModel() const override;
-
     bool isValid() const override;
     bool isDefault() const override;
-    bool isRemote() const override;
 
     QPrint::DeviceState state() const override;
 

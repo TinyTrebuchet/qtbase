@@ -322,6 +322,7 @@ QPrintPropertiesDialog::QPrintPropertiesDialog(QPrinter *printer, QPrintDevice *
     m_blackListedOptions 
     << "page-ranges"
     << "page-set"
+    << "copies"
     << "page-delivery"
     << "multiple-document-handling"
     << "sides"
@@ -1117,17 +1118,10 @@ void QPrintDialogPrivate::updateWidgets()
     options.printSelection->setVisible(q->testOption(QPrintDialog::PrintSelection));
     options.printCurrentPage->setVisible(q->testOption(QPrintDialog::PrintCurrentPage));
 
-#if QT_CONFIG(cpdb)
-    cpdb_option_t *opt = cpdbGetOption(top->d->m_printerObj, "multiple-document-handling");
-    if (opt && opt->num_supported > 1) 
-        options.collate->setEnabled(true);
-    else
-        options.collate->setEnabled(false);
-#endif
     options.collate->setVisible(q->testOption(QPrintDialog::PrintCollateCopies));
 
 #if QT_CONFIG(cpdb)
-    opt = cpdbGetOption(top->d->m_printerObj, "page-set");
+    cpdb_option_t *opt = cpdbGetOption(top->d->m_printerObj, "page-set");
     if (opt && opt->num_supported > 0) {
         options.pageSetLabel->setVisible(true);
         options.pageSetCombo->setVisible(true);
@@ -1343,12 +1337,7 @@ QUnixPrintWidgetPrivate::QUnixPrintWidgetPrivate(QUnixPrintWidget *p, QPrinter *
 
 void QUnixPrintWidgetPrivate::updateWidget()
 {
-#if QT_CONFIG(cpdb)
-    // printToFile will be handled by FILE backend
-    const bool printToFile = false;
-#else
     const bool printToFile = q == nullptr || q->testOption(QPrintDialog::PrintToFile);
-#endif
 
     if (printToFile && !filePrintersAdded) {
         if (widget.printers->count())

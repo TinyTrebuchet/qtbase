@@ -273,7 +273,6 @@ void QPageSetupWidget::initUnits()
 void QPageSetupWidget::initPagesPerSheet()
 {
 #if QT_CONFIG(cpdb)
-
     cpdb_option_t *opt = cpdbGetOption(m_printerObj, "number-up");
     if (opt && opt->num_supported > 0) {
         for (int i = 0; i < opt->num_supported; i++) {
@@ -305,10 +304,6 @@ void QPageSetupWidget::initPagesPerSheet()
     } else {
         m_ui.pagesPerSheetLayoutCombo->setVisible(false);
     }
-
-    
-    if (!m_ui.pagesPerSheetCombo->isVisible() && !m_ui.pagesPerSheetLayoutCombo->isVisible())
-        m_ui.pagesPerSheetButtonGroup->setVisible(false);
 
 #elif QT_CONFIG(cups)
     m_ui.pagesPerSheetLayoutCombo->addItem(QPrintDialog::tr("Left to Right, Top to Bottom"),

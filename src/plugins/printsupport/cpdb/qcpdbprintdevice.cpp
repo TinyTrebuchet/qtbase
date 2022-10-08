@@ -18,38 +18,25 @@ QCpdbPrintDevice::QCpdbPrintDevice(cpdb_printer_obj_t * const printerObj)
         m_location = printerObj->location;
         m_makeAndModel = printerObj->make_and_model;
 
-        m_supportsMultipleCopies = true;
-        m_supportsCollateCopies = true;
-
-        m_isRemote = false;
-
-        m_havePageSizes = false;
-        m_supportsCustomPageSizes = false;
+        cpdb_option_t *opt = cpdbGetOption(printerObj, "copies");
+        if (opt && opt->num_supported > 0) {
+            QList<QByteArray> copiesRange = QByteArray(opt->supported_values[0]).split('-');
+            if (copiesRange.size() == 2) {
+                bool ok;
+                int maxCopies = copiesRange[1].toInt(&ok);
+                if (ok && maxCopies > 1)
+                    m_supportsMultipleCopies = true;
+            }
+        }
+        
+        opt = cpdbGetOption(printerObj, "multiple-document-handling");
+        if (opt && opt->num_supported > 1) 
+            m_supportsCollateCopies = true;
     }
 }
 
 QCpdbPrintDevice::~QCpdbPrintDevice()
 {
-}
-
-QString QCpdbPrintDevice::id() const
-{
-    return QString(m_printerObj->id);
-}
-
-QString QCpdbPrintDevice::name() const
-{
-    return QString(m_printerObj->name);
-}
-
-QString QCpdbPrintDevice::makeAndModel() const
-{
-    return QString(m_printerObj->make_and_model);
-}
-
-QString QCpdbPrintDevice::location() const
-{
-    return QString(m_printerObj->location);
 }
 
 bool QCpdbPrintDevice::isValid() const
@@ -66,14 +53,9 @@ bool QCpdbPrintDevice::isDefault() const
     return (ps->defaultPrintDeviceId() == m_printerObj->name);
 }
 
-bool QCpdbPrintDevice::isRemote() const
-{
-    return false;
-}
-
 QPrint::DeviceState QCpdbPrintDevice::state() const
 {
-    QString state = cpdbGetState(m_printerObj);
+    QByteArray state = cpdbGetState(m_printerObj);
 
     if (state == "idle")
         return QPrint::Idle;
@@ -117,18 +99,18 @@ void QCpdbPrintDevice::loadPageSizes() const
 
 QPageSize QCpdbPrintDevice::defaultPageSize() const
 {
-    char *pageSize = cpdbGetDefault(m_printerObj, "media");
+    char *defaultVal = cpdbGetDefault(m_printerObj, "media");
 
     int width = 0, length = 0;
-    cpdbGetMediaSize(m_printerObj, pageSize, &width, &length);
+    cpdbGetMediaSize(m_printerObj, defaultVal, &width, &length);
 
     width = width / 100.0 * QCPDBSupport::pointsMultiplier;
     length = length / 100.0 * QCPDBSupport::pointsMultiplier;
 
     if (width && length) {
-        QString key = pageSize;
+        QString key = defaultVal;
         QSize size = QSize(width, length);
-        QString name = cpdbGetHumanReadableChoiceName(m_printerObj, "media", pageSize);
+        QString name = cpdbGetHumanReadableChoiceName(m_printerObj, "media", defaultVal);
         return createPageSize(key, size, name);
     }
 
@@ -166,7 +148,7 @@ void QCpdbPrintDevice::loadResolutions() const
     if (!opt) return;
 
     for (int i = 0; i < opt->num_supported; i++) {
-        QString resolution = opt->supported_values[i];
+        QByteArray resolution = opt->supported_values[i];
         resolution.chop(3);
         m_resolutions << resolution.toInt();
     }
@@ -174,13 +156,12 @@ void QCpdbPrintDevice::loadResolutions() const
 
 int QCpdbPrintDevice::defaultResolution() const
 {
-    char *val = cpdbGetDefault(m_printerObj, "printer-resolution");
-
-    if (val) {
-        QString resolution = val;
-        resolution.chop(3);
-        return resolution.toInt();
-    }
+    QByteArray val = cpdbGetDefault(m_printerObj, "printer-resolution");
+    val.chop(3);
+    bool ok;
+    int resolution = val.toInt(&ok);
+    if (ok)
+        return resolution;
 
     return QPlatformPrintDevice::defaultResolution();
 }
