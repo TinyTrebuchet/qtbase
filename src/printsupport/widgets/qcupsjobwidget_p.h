@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 
-#ifndef QUNIXJOBWIDGET_P_H
-#define QUNIXJOBWIDGET_P_H
+#ifndef QCUPSJOBWIDGET_P_H
+#define QCUPSJOBWIDGET_P_H
 
 //
 //  W A R N I N G
@@ -18,19 +18,11 @@
 //
 
 #include <QtPrintSupport/private/qtprintsupportglobal_p.h>
-
-#if QT_CONFIG(cpdb)
-#include <cpdb/cpdb-frontend.h>
-#include <private/qcpdb_p.h>
-#endif
-
-#if QT_CONFIG(cups)
 #include <private/qcups_p.h>
-#endif
 
-QT_REQUIRE_CONFIG(unixjobwidget);
+QT_REQUIRE_CONFIG(cupsjobwidget);
 
-#include <ui_qunixjobwidget.h>
+#include <ui_qcupsjobwidget.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -39,15 +31,14 @@ class QTime;
 class QPrinter;
 class QPrintDevice;
 
-class QUnixJobWidget : public QWidget
+class QCupsJobWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit QUnixJobWidget(QPrinter *printer, QPrintDevice *printDevice, QWidget *parent = nullptr);
-    ~QUnixJobWidget();
+    explicit QCupsJobWidget(QPrinter *printer, QPrintDevice *printDevice, QWidget *parent = nullptr);
+    ~QCupsJobWidget();
     void setupPrinter();
-
     void updateSavedValues();
     void revertToSavedValues();
 
@@ -56,28 +47,21 @@ private Q_SLOTS:
 
 private:
 
-    QTime jobHoldTime() const;
-    QString jobBilling() const;
-    int jobPriority() const;
-
-    void setJobBilling(const QString &jobBilling = QString());
-    void setJobPriority(int priority = 50);
-
-#if QT_CONFIG(cpdb)
-    QByteArray startBannerPage() const;
-    QByteArray endBannerPage() const;
-    QByteArray jobHold() const;
-
-#elif QT_CONFIG(cups)
     void setJobHold(QCUPSSupport::JobHoldUntil jobHold = QCUPSSupport::NoHold, QTime holdUntilTime = QTime());
     QCUPSSupport::JobHoldUntil jobHold() const;
-    
+    QTime jobHoldTime() const;
+
+    void setJobBilling(const QString &jobBilling = QString());
+    QString jobBilling() const;
+
+    void setJobPriority(int priority = 50);
+    int jobPriority() const;
+
     void setStartBannerPage(const QCUPSSupport::BannerPage bannerPage = QCUPSSupport::NoBanner);
     QCUPSSupport::BannerPage startBannerPage() const;
 
     void setEndBannerPage(const QCUPSSupport::BannerPage bannerPage = QCUPSSupport::NoBanner);
     QCUPSSupport::BannerPage endBannerPage() const;
-#endif
 
     void initJobHold();
     void initJobBilling();
@@ -86,21 +70,16 @@ private:
 
     QPrinter *m_printer;
     QPrintDevice *m_printDevice;
-    Ui::QUnixJobWidget m_ui;
+    Ui::QCupsJobWidget m_ui;
 
+    QCUPSSupport::JobHoldUntilWithTime m_savedJobHoldWithTime;
     QString m_savedJobBilling;
     int m_savedPriority;
-#if QT_CONFIG(cpdb)
-    cpdb_printer_obj_t *m_printerObj;
-#endif
-#if QT_CONFIG(cups)
-    QCUPSSupport::JobHoldUntilWithTime m_savedJobHoldWithTime;
     QCUPSSupport::JobSheets m_savedJobSheets;
-#endif
 
-    Q_DISABLE_COPY_MOVE(QUnixJobWidget)
+    Q_DISABLE_COPY_MOVE(QCupsJobWidget)
 };
 
 QT_END_NAMESPACE
 
-#endif  // QUNIXJOBWIDGET_P_H
+#endif  // QCUPSJOBWIDGET_P_H

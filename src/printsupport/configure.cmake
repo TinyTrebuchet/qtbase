@@ -11,10 +11,10 @@
 
 qt_find_package(Cups PROVIDED_TARGETS Cups::Cups MODULE_NAME printsupport QMAKE_LIB cups)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CPDB_PKG cpdb-frontend)
-
-
+if(NOT QT_CONFIGURE_RUNNING)
+    find_package(PkgConfig)
+    pkg_check_modules(Cpdb cpdb-frontend)
+endif()
 
 #### Tests
 
@@ -26,22 +26,28 @@ qt_feature("cpdb" PUBLIC PRIVATE
     SECTION "PAINTING"
     LABEL "CPDB"
     PURPOSE "Provides Common Print Dialog Backend support"
-    CONDITION CPDB_PKG_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring
+    CONDITION Cpdb_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring
 )
 qt_feature_definition("cpdb" "QT_NO_CPDB" NEGATE VALUE "1")
+qt_feature("cpdbjobwidget" PUBLIC PRIVATE
+    SECTION "Widgets"
+    LABEL "CPDB job control widget"
+    CONDITION ( QT_FEATURE_buttongroup ) AND ( QT_FEATURE_calendarwidget ) AND ( QT_FEATURE_checkbox ) AND ( QT_FEATURE_combobox ) AND ( QT_FEATURE_cpdb ) AND ( QT_FEATURE_datetimeedit ) AND ( QT_FEATURE_groupbox ) AND ( QT_FEATURE_tablewidget )
+)
+qt_feature_definition("cpdbjobwidget" "QT_NO_CPDBJOBWIDGET" NEGATE VALUE "1")
 qt_feature("cups" PUBLIC PRIVATE
     SECTION "Painting"
     LABEL "CUPS"
     PURPOSE "Provides support for the Common Unix Printing System."
-    CONDITION Cups_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring AND NOT CPDB_PKG_FOUND
+    CONDITION Cups_FOUND AND QT_FEATURE_printer AND QT_FEATURE_datestring AND NOT Cpdb_FOUND
 )
 qt_feature_definition("cups" "QT_NO_CUPS" NEGATE VALUE "1")
-qt_feature("unixjobwidget" PUBLIC PRIVATE
+qt_feature("cupsjobwidget" PUBLIC PRIVATE
     SECTION "Widgets"
-    LABEL "UNIX job control widget"
-    CONDITION ( QT_FEATURE_buttongroup ) AND ( QT_FEATURE_calendarwidget ) AND ( QT_FEATURE_checkbox ) AND ( QT_FEATURE_combobox ) AND ( QT_FEATURE_cups OR QT_FEATURE_cpdb ) AND ( QT_FEATURE_datetimeedit ) AND ( QT_FEATURE_groupbox ) AND ( QT_FEATURE_tablewidget )
+    LABEL "CUPS job control widget"
+    CONDITION ( QT_FEATURE_buttongroup ) AND ( QT_FEATURE_calendarwidget ) AND ( QT_FEATURE_checkbox ) AND ( QT_FEATURE_combobox ) AND ( QT_FEATURE_cups ) AND ( QT_FEATURE_datetimeedit ) AND ( QT_FEATURE_groupbox ) AND ( QT_FEATURE_tablewidget )
 )
-qt_feature_definition("unixjobwidget" "QT_NO_UNIXJOBWIDGET" NEGATE VALUE "1")
+qt_feature_definition("cupsjobwidget" "QT_NO_CUPSJOBWIDGET" NEGATE VALUE "1")
 qt_feature("printer" PUBLIC
     SECTION "Painting"
     LABEL "QPrinter"

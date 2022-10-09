@@ -42,18 +42,21 @@
 #include "ui_qprintsettingsoutput.h"
 #include "ui_qprintwidget.h"
 
-#if QT_CONFIG(unixjobwidget)
-#include "qunixjobwidget_p.h"
-#endif
 
 #if QT_CONFIG(cpdb)
 #include <cpdb/cpdb-frontend.h>
 #include <private/qcpdb_p.h>
+#if QT_CONFIG(cpdbjobwidget)
+#include "qcpdbjobwidget_p.h"
+#endif
 #endif
 
 #if QT_CONFIG(cups)
 Q_DECLARE_METATYPE(const ppd_option_t *)
 #include <private/qcups_p.h>
+#if QT_CONFIG(cupsjobwidget)
+#include "qcupsjobwidget_p.h"
+#endif
 #endif
 
 /*
@@ -125,8 +128,10 @@ private:
 #endif
     Ui::QPrintPropertiesWidget widget;
     QDialogButtonBox *m_buttons;
-#if QT_CONFIG(unixjobwidget)
-    QUnixJobWidget *m_jobOptions;
+#if QT_CONFIG(cpdbjobwidget)
+    QCpdbJobWidget *m_jobOptions;
+#elif QT_CONFIG(cupsjobwidget)
+    QCupsJobWidget *m_jobOptions;
 #endif
 
 #if QT_CONFIG(cpdb)
@@ -273,7 +278,7 @@ QPrintPropertiesDialog::QPrintPropertiesDialog(QPrinter *printer, QPrintDevice *
 #if QT_CONFIG(cups)
     , m_printer(printer)
 #endif
-#if QT_CONFIG(unixjobwidget)
+#if QT_CONFIG(cpdbjobwidget) || QT_CONFIG(cupsjobwidget)
     , m_jobOptions(nullptr)
 #endif
 {
@@ -294,15 +299,16 @@ QPrintPropertiesDialog::QPrintPropertiesDialog(QPrinter *printer, QPrintDevice *
     m_printerObj = qvariant_cast<cpdb_printer_obj_t *>(currentPrintDevice->property(PDPK_CpdbPrinterObj));
 #endif
 
-#if QT_CONFIG(unixjobwidget)
-#if QT_CONFIG(cpdb)
+#if QT_CONFIG(cpdbjobwidget)
     if (cpdbGetOption(m_printerObj, "job-sheets") || cpdbGetOption(m_printerObj, "job-hold-until") 
-    || cpdbGetOption(m_printerObj, "job-priority") || cpdbGetOption(m_printerObj, "billing-info"))
-#endif
-    {
-        m_jobOptions = new QUnixJobWidget(printer, currentPrintDevice);
+    || cpdbGetOption(m_printerObj, "job-priority") || cpdbGetOption(m_printerObj, "billing-info")) {
+        m_jobOptions = new QCpdbJobWidget(printer, currentPrintDevice);
         widget.tabs->insertTab(1, m_jobOptions, tr("Job Options"));
     }
+#endif
+#if QT_CONFIG(cupsjobwidget)
+    m_jobOptions = new QCupsJobWidget(printer, currentPrintDevice);
+    widget.tabs->insertTab(1, m_jobOptions, tr("Job Options"));    
 #endif
 
     const int advancedTabIndex = widget.tabs->indexOf(widget.cupsPropertiesPage);
@@ -365,7 +371,7 @@ void QPrintPropertiesDialog::setupPrinter() const
     setPrinterAdvancedCpdbOptions();
 #endif
     widget.pageSetup->setupPrinter();
-#if QT_CONFIG(unixjobwidget)
+#if QT_CONFIG(cupsjobwidget) || QT_CONFIG(cpdbjobwidget)
     if (m_jobOptions)
         m_jobOptions->setupPrinter();
 #endif
@@ -382,7 +388,7 @@ void QPrintPropertiesDialog::reject()
 {
     widget.pageSetup->revertToSavedValues();
 
-#if QT_CONFIG(unixjobwidget)
+#if QT_CONFIG(cupsjobwidget)
     if (m_jobOptions)
         m_jobOptions->revertToSavedValues();
 #endif
@@ -414,7 +420,7 @@ void QPrintPropertiesDialog::accept()
     advancedOptionsUpdateSavedValues();
 #endif
 
-#if QT_CONFIG(unixjobwidget)
+#if QT_CONFIG(cupsjobwidget)
     if (m_jobOptions)
         m_jobOptions->updateSavedValues();
 #endif

@@ -43,6 +43,8 @@ qt_internal_add_module(PrintSupport
         Qt::GuiPrivate
         Qt::WidgetsPrivate
     GENERATE_CPP_EXPORTS
+    QPA_HEADER_FILTERS
+        "(^|/)qplatform.+\\.h$"
 )
 
 #### Keys ignored in scope 1:.:.:printsupport.pro:<TRUE>:
@@ -94,14 +96,25 @@ qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cpdb AND UNIX AND NO
         ${CPDB_PKG_LIBRARIES}
 )
 
+qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cpdbjobwidget AND UNIX AND NOT APPLE
+    SOURCES
+        widgets/qcpdbjobwidget.cpp widgets/qcupsjobwidget.ui widgets/qcpdbjobwidget_p.h
+    INCLUDE_DIRECTORIES
+        ${CPDB_PKG_INCLUDE_DIRS}
+    LIBRARIES
+        ${CPDB_PKG_LIBRARIES}
+    ENABLE_AUTOGEN_TOOLS
+        uic
+)
+
 qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cups AND UNIX AND NOT APPLE
     SOURCES
         kernel/qcups.cpp kernel/qcups_p.h
 )
 
-qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_unixjobwidget AND UNIX AND NOT APPLE
+qt_internal_extend_target(PrintSupport CONDITION QT_FEATURE_cupsjobwidget AND UNIX AND NOT APPLE
     SOURCES
-        widgets/qunixjobwidget.cpp widgets/qunixjobwidget.ui widgets/qunixjobwidget_p.h
+        widgets/qcupsjobwidget.cpp widgets/qcupsjobwidget.ui widgets/qcupsjobwidget_p.h
     ENABLE_AUTOGEN_TOOLS
         uic
 )
